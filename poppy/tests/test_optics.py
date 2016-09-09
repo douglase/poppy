@@ -474,3 +474,23 @@ def test_ThinLens(display=False):
         "ThinLens shouldn't be affected by null optical elements! Introducing extra image planes "
         "made the output PSFs differ beyond numerical tolerances."
     )
+
+def dispersive_elements(display=False):
+    '''
+    test that dispersion plate gives expected phase delay.
+    
+    N-BK7 (SCHOTT) at 20 C is n= 1.5075, http://refractiveindex.info
+
+    '''
+    assert 1.5075 == np.round(poppy.optics.dispersion_plate(material="BK7").n(1*u.um),4)
+
+    '''
+    test 0.1 um phase shift:
+    0.1*u.um/1.5075/6.28
+    '''
+    #test dispersive element:
+    wf=poppy.Wavefront(wavelength=1*u.um)
+    disperser=poppy.optics.dispersion_plate(.1*u.um, material="BK7")
+    wf*=disperser
+    #test that dispersion shifts phase as expected
+    assert np.round((0.1*u.um*1.5075*2*np.pi/1.*u.um).value,5) == np.round(wf.phase.mean() ,5)

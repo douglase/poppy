@@ -1796,6 +1796,12 @@ class refractive_surface(AnalyticOpticalElement):
     ----------
     incidence : tuple
                 x and y angles if incidence, each as an astropy.unit of angle
+    primary_material : poppy.optics.dispersion_plane
+              incident medium with a dispersion function defined by the dispersion plate function
+    secondary_material : poppy.optics.dispersion_plane
+              post interface medium with a dispersion function defined by the dispersion plate function
+    **kwargs : passed to parent class, AnalyticOpticalElement.
+
     """
     
     def __init__(self, x_y_incidence = (0*u.deg,0*u.deg),
@@ -1806,14 +1812,15 @@ class refractive_surface(AnalyticOpticalElement):
         self.primary_material=primary_material
         self.secondary_material=secondary_material
         AnalyticOpticalElement.__init__(self,**kwargs)
+
     def get_opd(self, wave):
         """ Compute tilt
         """
         n_1_over__n_2 = self.primary_material.n(wave.wavelength)/self.secondary_material.n(wave.wavelength)
-        print(n_1_over__n_2)
+        #print(n_1_over__n_2)
         tilt_x = np.arcsin(n_1_over__n_2*np.sin(self.x_y_incidence[0].to(u.rad).value)).to(u.arcsec).value
         tilt_y = np.arcsin(n_1_over__n_2*np.sin(self.x_y_incidence[1].to(u.rad).value)).to(u.arcsec).value
-        print(tilt_x,tilt_y)
+        #print(tilt_x,tilt_y)
         wave.tilt(tilt_x, tilt_y)
 
         # gotta return something... so return a value that will not affect the wave any more.
