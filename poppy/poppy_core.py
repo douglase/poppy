@@ -404,7 +404,7 @@ class Wavefront(object):
         # outside of those pixels.
         # This is needed to get the coordinates right when displaying very small arrays
 
-        halfpix = self.pixelscale.value*0.5
+        halfpix = self.pixelscale.to(u.m).value*0.5
         extent = [x.min()-halfpix, x.max()+halfpix, y.min()-halfpix, y.max()+halfpix]
 
         if use_angular_coordinates is None:
