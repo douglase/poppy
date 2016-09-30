@@ -16,7 +16,7 @@ _log = logging.getLogger('poppy')
 if _FFTW_AVAILABLE:
     import pyfftw
 
-__all__ = ['QuadPhase', 'QuadraticLens', 'FresnelWavefront', 'FresnelOpticalSystem']
+__all__ = ['QuadPhase', 'GeneralLens', 'QuadraticLens', 'FresnelWavefront', 'FresnelOpticalSystem']
 
 
 class QuadPhase(poppy.optics.AnalyticOpticalElement):
@@ -56,7 +56,6 @@ class QuadPhase(poppy.optics.AnalyticOpticalElement):
         wave : obj
             a Fresnel Wavefront object
         """
-
         y, x = wave.coordinates()
         rsqd = (x ** 2 + y ** 2) * u.m ** 2
         _log.debug("Applying spherical phase curvature ={0:0.2e}".format(self.z))
@@ -88,6 +87,46 @@ class _QuadPhaseShifted(QuadPhase):
             FresnelWavefront instance
         """
         return np.fft.fftshift(super(_QuadPhaseShifted, self).get_phasor(wave))
+
+
+class GeneralLens(QuadPhase):
+    """
+    General lens with misalignment parameters
+
+    """
+
+    @utils.quantity_input(f_lens=u.m)
+    def __init__(self,
+                 R1=1.0*u.m,
+                 R2=1.0*u.m,
+                 n=1.515,
+                 thickness=1.0*u.m,
+                 planetype=PlaneType.unspecified,
+                 name='Quadratic Lens',
+                 **kwargs):
+        f_lens = R1*R2/((n-1.0)*(R2-R1))
+        QuadPhase.__init__(self,
+                           f_lens,
+                           planetype=planetype,
+                           name=name,
+                           **kwargs)
+        self.fl = f_lens.to(u.m)
+        _log.debug("Initialized: " + self.name + ", fl ={0:0.2e}".format(self.fl))
+
+    def __str__(self):
+        return "Lens: {0}, with focal length {1}".format(self.name, self.fl)
+
+    def get_phasor(self, wave):
+        print 'Testing override function...'
+        y, x = wave.coordinates()
+        rsqd = (x ** 2 + y ** 2) * u.m ** 2
+        _log.debug("Applying spherical phase curvature ={0:0.2e}".format(self.z))
+        _log.debug("Applying spherical lens phase ={0:0.2e}".format(1.0 / self.z))
+        _log.debug("max_rsqd ={0:0.2e}".format(np.max(rsqd)))
+
+        k = 2 * np.pi / wave.wavelength
+        lens_phasor = np.exp(1.j * k * rsqd / (2.0 * self.fl))
+        return lens_phasor
 
 
 class QuadraticLens(QuadPhase):
@@ -810,6 +849,9 @@ class FresnelWavefront(Wavefront):
             # than most other optics, adjusting beam parameters and so forth
             self.apply_lens_power(optic)
             return self
+        elif isinstance(optic, GeneralLens):
+            self.apply_lens_power(optic)
+            return self
         else:
             # Otherwise fall back to the parent class
             return super(FresnelWavefront, self).__imul__(optic)
@@ -1030,10 +1072,8 @@ class FresnelOpticalSystem(OpticalSystem):
         inwave = FresnelWavefront(self.pupil_diameter / 2, wavelength=wavelength,
                                   npix=self.npix, oversample=oversample)
         _log.debug(
-            "Creating input wavefront with wavelength={0} microns,"
-            "npix={1}, pixel scale={2}".format(
-                wavelength.to(u.micron).value, self.npix, self.pupil_diameter / (self.npix * u.pixel)
-        ))
+            "Creating input wavefront with wavelength={0:e} microns, npix={1}, pixel scale={2:f} meters/pixel".format(
+                wavelength * 1e6, self.npix, self.pupil_diameter / self.npix))
         return inwave
 
     @utils.quantity_input(wavelength=u.meter)
