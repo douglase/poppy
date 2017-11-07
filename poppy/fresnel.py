@@ -295,7 +295,11 @@ class FresnelWavefront(Wavefront):
         if _USE_CUDA:
             #initialize FFT plan (can't be pickled)
             self.cuFFTPLAN = accelerate.cuda.fft.FFTPlan(self.shape,np.complex128,np.complex128)
-
+            
+        x = np.linspace(0,  self.n-1, self.n)
+        y = np.linspace(0,  self.n-1,  self.n)
+        xv, yv = np.meshgrid(x, y)
+        self._plus_minus_grid = (-1)**(xv+xy)
 
     def display(self, *args, **kwargs):
         if 'use_angular_coordinates' not in kwargs:
@@ -383,7 +387,13 @@ class FresnelWavefront(Wavefront):
         else:
             _log.debug("   Using numpy FFT")
             self.wavefront = np.fft.fft2(self.wavefront) / self.shape[0]
-            
+
+    def _fftshift(x):
+        if :
+            return  
+        else:
+            return np.fft.fftshift(x)
+
     def _inv_fft(self): 
         """
         Apply normalized Inverse 2D Fast Fourier Transform to wavefront
@@ -688,7 +698,8 @@ class FresnelWavefront(Wavefront):
                 t= ne.evaluate("-1.0j * pi * wavelen_m * (z_direct) * rhosqr")
         else:
                 t = -1.0j * np.pi * wavelen_m * (z_direct) * rhosqr
-
+        if not _shift:
+            self *= self._plus_minus_grid
         self._fft()
 
         self.wavefront = self.wavefront * _exp(t)  # eq. 6.68
@@ -821,7 +832,8 @@ class FresnelWavefront(Wavefront):
             plt.figure()
             self.display('both', colorbar=True, title="Starting Surface")
 
-        self.wavefront = np.fft.fftshift(self.wavefront)
+        if _shift:
+            self.wavefront = np.fft.fftshift(self.wavefront)
         _log.debug("Beginning Fresnel Prop. Waist at z = " + str(self.z_w0))
 
         if not self.spherical:
@@ -862,8 +874,8 @@ class FresnelWavefront(Wavefront):
         if display_intermed:
             plt.figure()
             self.display('both', colorbar=True)
-
-        self.wavefront = np.fft.fftshift(self.wavefront)
+        if _shift:
+            self.wavefront = np.fft.fftshift(self.wavefront)
         self.planetype = PlaneType.intermediate
         _log.debug("------ Propagated to plane of type " + str(self.planetype) + " at z = {0:0.2e} ------".format(z))
 
